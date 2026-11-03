@@ -18,8 +18,9 @@ h1{margin:4px 0;font-size:1.5rem}
 .pill{background:#17382a;border-radius:20px;padding:6px 14px}
 select,button{font:inherit;background:#17382a;color:var(--ink);border:1px solid #2c6648;border-radius:8px;padding:6px 10px;cursor:pointer}
 #board{display:grid;gap:3px;width:min(94vw,520px);aspect-ratio:1;touch-action:manipulation;user-select:none}
-.c{border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:clamp(14px,4.4vw,28px);line-height:1;position:relative;border:0;padding:0;color:#10281b}
+.c{border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:clamp(14px,4.4vw,28px);line-height:1;position:relative;border:0;padding:0;color:#10281b;min-width:0;min-height:0;overflow:hidden}
 .c.x{color:rgba(0,0,0,.55);font-weight:bold}
+.c.note{color:rgba(16,40,27,.42);font-size:clamp(10px,2.6vw,16px);font-weight:bold}
 .c.hint{outline:3px solid #fff}
 .c.bad{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
@@ -38,7 +39,7 @@ select,button{font:inherit;background:#17382a;color:var(--ink);border:1px solid 
 </div>
 <div id="board"></div>
 <div id="msg"></div>
-<p class="how">Tap a cell once to mark it with an X (no frog here), tap again to place a frog, tap again to clear. Placing a frog crosses out its row, column, neighbours and pond automatically. A frog placed on a wrong cell costs a heart. Three hearts per game.</p>
+<p class="how">Tap a cell once to pencil a light X (your note: no frog here), tap again to place the frog, tap again to clear. A placed frog automatically crosses out its row, column, neighbours and pond with dark X marks. A frog placed on a wrong cell costs a heart. Three hearts per game.</p>
 <script>
 const FROG='<svg viewBox="0 0 64 64" width="78%" height="78%" aria-label="frog"><ellipse cx="32" cy="38" rx="24" ry="18" fill="#3fae4f" stroke="#165a26" stroke-width="3"/><circle cx="20" cy="20" r="9" fill="#3fae4f" stroke="#165a26" stroke-width="3"/><circle cx="44" cy="20" r="9" fill="#3fae4f" stroke="#165a26" stroke-width="3"/><circle cx="20" cy="20" r="4.5" fill="#fff"/><circle cx="44" cy="20" r="4.5" fill="#fff"/><circle cx="21" cy="21" r="2.2" fill="#111"/><circle cx="43" cy="21" r="2.2" fill="#111"/><path d="M19 42 Q32 52 45 42" fill="none" stroke="#165a26" stroke-width="3" stroke-linecap="round"/></svg>';
 const COLORS=["#f4a259","#ef7b9e","#a0455c","#7da7e0","#d9c27a","#6fcf8a","#2f8f6a","#e5c34a","#8e8be0","#4fc3d9","#a07a52","#b4d96f"];
@@ -143,7 +144,7 @@ function newGame(){
 }
 function build(){
   const b=$("board");b.innerHTML="";
-  b.style.gridTemplateColumns=`repeat(${N},1fr)`;
+  b.style.gridTemplateColumns=`repeat(${N},1fr)`;b.style.gridTemplateRows=`repeat(${N},1fr)`;
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){
     const d=document.createElement("button");
     d.className="c";d.style.background=COLORS[reg[r][c]%COLORS.length];
@@ -164,7 +165,8 @@ function tap(r,c){
   if(over)return;
   const s=state[r][c];
   if(s===2){state[r][c]=0}
-  else if(s===1||excluded(r,c)){
+  else if(excluded(r,c)){if(s===1)state[r][c]=0} // game-crossed cell: no frog possible; tap just clears a stale note
+  else if(s===1){
     if(sol[r]===c){state[r][c]=2}
     else{
       lives--;
@@ -182,11 +184,11 @@ function update(){
   let frogs=0;
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){
     const el=cell(r,c);el.classList.remove("hint");
-    const isX=state[r][c]!==2&&(state[r][c]===1||excluded(r,c));
-    el.innerHTML=state[r][c]===2?FROG:"";
-    if(isX)el.textContent="\u2715";
-    el.classList.toggle("x",isX);
-    if(state[r][c]===2)frogs++;
+    if(state[r][c]===2){el.innerHTML=FROG;el.classList.remove("x","note");frogs++;continue}
+    const crossed=excluded(r,c);
+    el.textContent=(crossed||state[r][c]===1)?"\u2715":"";
+    el.classList.toggle("x",crossed);
+    el.classList.toggle("note",!crossed&&state[r][c]===1);
   }
   $("count").textContent=`frogs ${frogs} / ${N}`;
   $("hearts").textContent="\u2665".repeat(Math.max(lives,0))+"\u2661".repeat(3-Math.max(lives,0));
